@@ -14,8 +14,6 @@ knitr::opts_chunk$set(echo = TRUE)
 During my internship at Securian, I was given a dataset which contained medical conditions (as text) for life insurance applicants.  In the exploratory phase, I used the tf-idf statistic to extract medical conditions characteristic to each underwriting class.  As an example, diabetes may be a condition characteristic to a  underwriting class associated with a higher risk.  
 
 Most commonly the tf-idf statistic is used for tasks involved in information retrieval, but is also used as a text vectorization tool for predictive modeling.  
-
-
 ## The First Dataset
 
 For the next few examples, I will be using the text generated from the Wikipedia articles on baseball and cricket. Although these sports are considered similar, the tf-idf should pull words that are characteristic to each sport.  
@@ -31,8 +29,6 @@ library(tm)
 
 cricket <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//cricket - Wikipedia.txt', header = FALSE, fill = FALSE, col.names = 'cricket.words', stringsAsFactors = FALSE)
 baseball <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//Baseball - Wikipedia.txt', fill = FALSE, col.names = 'baseball.words', stringsAsFactors = FALSE)
-wiffleball <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//WiffleBall _ Wikipedia.txt', fill = FALSE, col.names = 'wiffle.words', stringsAsFactors = FALSE)
-
 pal <- c("#4F628E","#7887AB", "#2E4272", "#AA8439")
 ```
 
@@ -55,8 +51,6 @@ tokenizer.func <- function(dat, sp = 'baseball'){
 }
 baseball.tokenized <- tokenizer.func(baseball)
 cricket.tokenized <- tokenizer.func(cricket, sp = 'cricket')
-wiffle.tokenized <- tokenizer.func(wiffleball, sp = 'wiffle')
-
 head(baseball.tokenized)
 ```
 
@@ -169,17 +163,53 @@ sports_tfidf %>%
 
 This is much more informative!  For example, I now know that bowler is to cricket as pitcher is to baseball.  From the 'american' and 'mlb', I can guess that baseball is popular in America, but 'icc' and 'nations' suggests that cricket is more popular as an international sport.  From an exploratory sense, this is much more informative.  
 
+## Simple Information Retrieval
+
+In its simplest form an information retrieval engine will sum up the tf_idf of the words in the query. 
+```{r recomender}
+query <- c('What', 'sport', 'is', 'played', 'on', 'a', 'diamond')
+
+sports_tfidf %>%
+  group_by(sport) %>%
+  filter(word %in% query) %>%
+  summarize(tfidf_sum = sum(tf_idf))
+```
+
+## Common Recomendation Engine: tf_idf with cosine similarity
+
+```{r email_files}
+tryout2019 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//tryout-notes.txt', header = FALSE, fill = FALSE, col.names = 'tryout2019', stringsAsFactors = FALSE)
+spam <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//spam-email.txt', header = FALSE, fill = FALSE, col.names = 'spam', stringsAsFactors = FALSE, quote="")
+tryout2018 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//Tryouts-2018.txt', header = FALSE, fill = FALSE, col.names = 'tryout2018', stringsAsFactors = FALSE)
+
+tok1 <- tokenizer.func(tryout2019, sp = 'tok1')
+tok2 <- tokenizer.func(tryout2018, sp = 'tok2')
+tok3 <- tokenizer.func(spam, sp = 'spam')
+
+emails <- bind_rows(tok1, tok2, tok3)
+```
+
+```{r cosine_sim}
+df <- 
+  emails %>%
+  count(sport, word) %>%
+  cast_dtm(term = word, document = sport, value = n, weighting = tm::weightTfIdf)
+
+library(lsa)
+mat <- cosine(t(as.matrix(df)))  
+
+```
 ## Various methods for text vectorization
 
 There are several commands in both R and Python that will produce a Document Term Matrix with tf-idf weightings.  Something to note is that often these matrices take a term frequency vector instead of a vector of text.  Below is a list and notes on a few of them.  As is typical of R, there is probably a plethora of functions to do the same thing, and conversely in python, one function with a plethora of options.
 
 R:
-- `DocumentTermMatrix` or `TermDocumentMatrix`.  I didn't try this one as my data was in a dataframe and not structured as a `corpus`.  It does have a control function to choose the tf-idf weightings (`weightTfIdf`) with the option to normalize the term frequencies. 
+- `DocumentTermMatrix` or `TermDocumentMatrix`.  I didnt try this one as my data was in a dataframe and not structured as a `corpus`.  It does have a control function to choose the tf-idf weightings (`weightTfIdf`) with the option to normalize the term frequencies. 
 - `cast_dtm`.  Better option if you have a tidy dataframe of terms and don't want to work through generating a corpus structure.  Requires a count column (`value`).  The tf-idf weighting is `weighting = tm::weightTfIdf` and can normalize the term frequency. 
 
+Python:
+- `TfIdfTransformer`
 
-```{r recomender}
 
-
-
-```
+## The future of tf-idf
+## More on the TfIdf Transformer in Python
