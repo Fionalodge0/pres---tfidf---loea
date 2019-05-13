@@ -31,6 +31,7 @@ library(tm)
 
 cricket <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//cricket - Wikipedia.txt', header = FALSE, fill = FALSE, col.names = 'cricket.words', stringsAsFactors = FALSE)
 baseball <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//Baseball - Wikipedia.txt', fill = FALSE, col.names = 'baseball.words', stringsAsFactors = FALSE)
+wiffleball <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//WiffleBall _ Wikipedia.txt', fill = FALSE, col.names = 'wiffle.words', stringsAsFactors = FALSE)
 
 pal <- c("#4F628E","#7887AB", "#2E4272", "#AA8439")
 ```
@@ -43,11 +44,18 @@ The data was tokenized by single words using the `unnest_tokens` tool from the t
 
 ```{r tokenized_data, message=FALSE, warning=FALSE}
 # tokenize
-baseball.tokenized <- 
-  baseball %>%
-  unnest_tokens(output = word, input = baseball.words, token = 'words') %>%
-  mutate(sport = 'baseball') %>%
-  select(sport, word) # just reorders the data
+tokenizer.func <- function(dat, sp = 'baseball'){
+  tmp <- 
+    dat %>%
+    unnest_tokens(output = word, input = !!sym(colnames(dat)), token = 'words') %>%
+    mutate(sport = sp) %>%
+    select(sport, word) %>%
+    filter(!grepl('0|1|2|3|4|5|6|7|8|9', word)) # remove numbers
+  return(tmp)
+}
+baseball.tokenized <- tokenizer.func(baseball)
+cricket.tokenized <- tokenizer.func(cricket, sp = 'cricket')
+wiffle.tokenized <- tokenizer.func(wiffleball, sp = 'wiffle')
 
 head(baseball.tokenized)
 ```
@@ -55,14 +63,9 @@ head(baseball.tokenized)
 The same was done for the text data for the sport of cricket and row-binded into one dataframe.  Below are distributional words for each sport.
 
 ```{r tokenized, include=FALSE}
-# tokenize
-cricket.tokenized <- 
-  cricket %>%
-  unnest_tokens(word, cricket.words) %>%
-  mutate(sport = 'cricket')
 
-# combine
-sports <- bind_rows(baseball.tokenized, cricket.tokenized)
+# combine baseball and cricket
+sports <- bind_rows(baseball.tokenized, cricket.tokenized, wiffle.tokenized)
 
 wordfreq <-
   sports %>%
@@ -79,7 +82,7 @@ wordfreq %>%
   top_n(15, freq) %>%
   ungroup %>%
   ggplot(aes(word, freq, fill = sport)) + 
-  scale_fill_manual(values = pal[c(1,4)])+
+  scale_fill_manual(values = pal[c(1,4,2)])+
   geom_col(show.legend = FALSE) +
   facet_wrap(~sport, dir = 'v', scales = 'free') 
 ```
@@ -89,7 +92,7 @@ wordfreq %>%
 Text data often follows a lognormal (?) distribution, mainly because the english language repeatly uses the same words, such as 'is', 'the', 'a', etc.  Below is the plot of the proportional distributions of words from both the baseball and cricket text.  
 
 
-```{r dist_plot}
+```{r dist_plot, warning=TRUE}
 wordfreq <-
   sports %>%
   group_by(sport, word) %>%
@@ -102,10 +105,10 @@ wordfreq %>%
   arrange(desc(freq)) %>%
   mutate(word = factor(word, levels = unique(word))) %>%
   group_by(sport) %>%
-  top_n(100, freq) %>%
+  top_n(15, freq) %>%
   ungroup %>%
   ggplot(aes(word, freq, fill = sport)) + 
-  scale_fill_manual(values = pal[c(1,4)])+
+  scale_fill_manual(values = pal[c(1,4,2)])+
   geom_col(show.legend = FALSE) +
   geom_density() + 
   facet_wrap(~sport, dir = 'v', scales = 'free') 
@@ -138,8 +141,9 @@ Term frequency is still important, i.e. if baseball occurs once in a document it
 Insert here
 
 Variations include:
-- addition of 1 in the denominator to avoid division by zero
+- various normalization techniques for the idf, including addition of 1 to the logarithm to avoid division by 0.
 - squaring of the statistic in practice (?)
+- normalization of the tf statistic to avoid bias on text length
 
 ## Using the tf-idf statistic on the cricket/baseball example
 
@@ -157,7 +161,7 @@ sports_tfidf %>%
   top_n(15, tf_idf) %>%
   ungroup %>%
   ggplot(aes(word, tf_idf, fill = sport)) + 
-  scale_fill_manual(values = pal[c(1,4)])+
+  scale_fill_manual(values = pal[c(1,4,2)])+
   geom_col(show.legend = FALSE) +
   facet_wrap(~sport, scales = 'free') + 
   coord_flip() 
@@ -165,5 +169,17 @@ sports_tfidf %>%
 
 This is much more informative!  For example, I now know that bowler is to cricket as pitcher is to baseball.  From the 'american' and 'mlb', I can guess that baseball is popular in America, but 'icc' and 'nations' suggests that cricket is more popular as an international sport.  From an exploratory sense, this is much more informative.  
 
-## Briefly on tf-idf for Information Retrieval
+## Various methods for text vectorization
 
+There are several commands in both R and Python that will produce a Document Term Matrix with tf-idf weightings.  Something to note is that often these matrices take a term frequency vector instead of a vector of text.  Below is a list and notes on a few of them.  As is typical of R, there is probably a plethora of functions to do the same thing, and conversely in python, one function with a plethora of options.
+
+R:
+- `DocumentTermMatrix` or `TermDocumentMatrix`.  I didn't try this one as my data was in a dataframe and not structured as a `corpus`.  It does have a control function to choose the tf-idf weightings (`weightTfIdf`) with the option to normalize the term frequencies. 
+- `cast_dtm`.  Better option if you have a tidy dataframe of terms and don't want to work through generating a corpus structure.  Requires a count column (`value`).  The tf-idf weighting is `weighting = tm::weightTfIdf` and can normalize the term frequency. 
+
+
+```{r recomender}
+
+
+
+```
