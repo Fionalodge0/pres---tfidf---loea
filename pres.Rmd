@@ -226,9 +226,14 @@ df <-
 
 library(lsa)
 mat <- cosine(t(as.matrix(df))) 
-mat
+
 ```
 
+```{r mat}
+print(mat)
+```
+
+## My hunches
 
 ## How does Google search?
 
