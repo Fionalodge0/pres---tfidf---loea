@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction and Use Case
 
-During my internship at Securian, I was given a dataset which contained medical conditions (as text) for life insurance applicants.  In the exploratory phase, I used the tf-idf statistic to extract medical conditions characteristic to each underwriting (risk) class.  As an example, diabetes may be a condition characteristic to an underwriting class associated with a higher risk.  
+During my internship at Securian, I was given a dataset which contained medical conditions (as text) for life insurance applicants.  In the exploratory phase, I used the tf-idf statistic to extract medical conditions characteristic to each underwriting (risk) class.  As an example, diabetes may be a condition characteristic to an underwriting class associated with a higher risk.  A little bit by accident, I also discovered underwriting cases that did not follow the set-upon rules by using this statistic.  
 
 Most commonly the tf-idf statistic is used for tasks involved in information retrieval, but is also used as a text vectorization tool for predictive modeling.  
 ## The First Dataset
@@ -162,26 +162,10 @@ sports_tfidf %>%
 
 ## Common Recomendation Engine: tf_idf with cosine similarity
 
-```{r email_files, include=FALSE}
-tryout2019 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//tryout-notes.txt', header = FALSE, fill = FALSE, col.names = 'tryout2019', stringsAsFactors = FALSE)
-spam <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//spam-email.txt', header = FALSE, fill = FALSE, col.names = 'spam', stringsAsFactors = FALSE, quote="")
-tryout2018 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//Tryouts-2018.txt', header = FALSE, fill = FALSE, col.names = 'tryout2018', stringsAsFactors = FALSE)
 
-tok1 <- tokenizer.func(tryout2019, sp = 'tok1')
-tok2 <- tokenizer.func(tryout2018, sp = 'tok2')
-tok3 <- tokenizer.func(spam, sp = 'spam')
-
-emails <- bind_rows(tok1, tok2, tok3)
-```
 
 ```{r cosine_sim}
-df <- 
-  emails %>%
-  count(sport, word) %>%
-  cast_dtm(term = word, document = sport, value = n, weighting = tm::weightTfIdf)
-
-library(lsa)
-mat <- cosine(t(as.matrix(df)))  
+ 
 
 ```
 
@@ -219,6 +203,31 @@ table2 <-
 kable(table %>% bind_cols(table2), format = 'markdown')
 ```
 
-Also, in this context, hat is probably more important than the word unique, but the tf-idf ignores this relevancy.
+In this context, hat is probably more important than the word unique, but the tf-idf ignores this relevancy.
 
-## More, briefly on the TfIdf in Python
+## Usecase - Document Similarity
+
+Since the tf-idf extracts the characteristic words for a document, it is also useful in identifying the similarity between documents.  As a usecase, if a company uses common language in its documents, the resulting idf would be low, essentially labelling those documents as 'typical'.  Put through sometype of similarity measure/clustering model, this will result in a strong relationship to the similiar documents.   
+
+I have been coaching high school softball for 6 years, and I was curious to know if I have started to repeat myself and sound similar.  As an example, I extracted two different emails about tryouts and one spam email. I found the tf-idf and then calculated the cosine similarity for each document.  My emails are not similar (they should have a ratio close to 1) - but the spam email is not similar at all!  
+
+```{r email_files, include=FALSE}
+tryout2019 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//tryout-notes.txt', header = FALSE, fill = FALSE, col.names = 'tryout2019', stringsAsFactors = FALSE)
+spam <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//spam-email.txt', header = FALSE, fill = FALSE, col.names = 'spam', stringsAsFactors = FALSE, quote="")
+tryout2018 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//Tryouts-2018.txt', header = FALSE, fill = FALSE, col.names = 'tryout2018', stringsAsFactors = FALSE)
+
+tok1 <- tokenizer.func(tryout2019, sp = 'tok1')
+tok2 <- tokenizer.func(tryout2018, sp = 'tok2')
+tok3 <- tokenizer.func(spam, sp = 'spam')
+
+emails <- bind_rows(tok1, tok2, tok3)
+
+df <- 
+  emails %>%
+  count(sport, word) %>%
+  cast_dtm(term = word, document = sport, value = n, weighting = tm::weightTfIdf)
+
+library(lsa)
+mat <- cosine(t(as.matrix(df))) 
+```
+
