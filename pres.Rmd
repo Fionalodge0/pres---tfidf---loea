@@ -233,7 +233,9 @@ mat <- cosine(t(as.matrix(df)))
 print(mat)
 ```
 
-## My hunches
+## My Observations
+
+- I'm not sure if it will necessarily improve model accuracy.  
 
 ## How does Google search?
 
