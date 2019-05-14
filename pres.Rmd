@@ -2,7 +2,9 @@
 title: "tf-idf-pres-LAEA"
 author: "Fiona R Lodge"
 date: "5/12/2019"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,12 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction and Use Case
 
-During my internship at Securian, I was given a dataset which contained medical conditions (as text) for life insurance applicants.  In the exploratory phase, I used the tf-idf statistic to extract medical conditions characteristic to each underwriting (risk) class.  As an example, diabetes may be a condition characteristic to an underwriting class associated with a higher risk.  A little bit by accident, I also discovered underwriting cases that did not follow the set-upon rules by using this statistic.  
+During my internship at Securian Financial, I was given a dataset which contained medical conditions (as text) for life insurance applicants.  In the exploratory phase, I used the tf-idf statistic to extract medical conditions characteristic to each underwriting (risk) class.  As an example, diabetes may be a condition characteristic to an underwriting class associated with a higher risk.  A little bit by accident, I also discovered underwriting cases that did not follow the set-upon rules by using this statistic.  
 
-Most commonly the tf-idf statistic is used for tasks involved in information retrieval, but is also used as a text vectorization tool for predictive modeling.  
-## The First Dataset
+Most commonly the tf-idf statistic is used for tasks involved in information retrieval, but is also used as a text vectorization tool for predictive modeling.
 
-For the next few examples, I will be using the text generated from the Wikipedia articles on baseball and cricket. Although these sports are considered similar, the tf-idf should pull words that are characteristic to each sport.  
+## The Example Dataset
+
+For the next few examples, I will be using the text generated from the Wikipedia articles on baseball and cricket. The tf-idf should find words that are characteristic to each sport.  
 
 ```{r tables, message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
@@ -36,7 +39,7 @@ pal <- c("#4F628E","#7887AB", "#2E4272", "#AA8439")
 knitr::include_graphics('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//baseball_cricket.PNG')
 ```
 
-The data was tokenized by single words using the `unnest_tokens` tool from the tidytext package.  A tokenization of the sentence 'Baseball is a bat-and-ball game' would be 'Baseball', 'is', 'a', 'bat-and-ball', 'game'.  
+The data was tokenized by single words using the `unnest_tokens` tool from the `tidytext` package.  A sample tokenization of the sentence 'Baseball is a bat-and-ball game' would be 'Baseball', 'is', 'a', 'bat-and-ball', 'game'.  Data cleaning steps performed included removing digits and \'s.  The data was then combined into one dataset.
 
 ```{r tokenized_data, message=FALSE, warning=FALSE}
 # tokenize
@@ -46,8 +49,8 @@ tokenizer.func <- function(dat, sp = 'baseball'){
     unnest_tokens(output = word, input = !!sym(colnames(dat)), token = 'words') %>%
     mutate(sport = sp) %>%
     select(sport, word) %>%
-    filter(!grepl('\\d', word)) %>% # remove numbers
-    mutate(word = str_replace_all(word, '\'s', ""))
+    filter(!grepl('\\d', word)) %>% # remove digits
+    mutate(word = str_replace_all(word, '\'s', "")) #Stemming to remove 's
   return(tmp)
 }
 baseball.tokenized <- tokenizer.func(baseball)
@@ -59,12 +62,10 @@ sports <- bind_rows(baseball.tokenized, cricket.tokenized)
 head(sports)
 ```
 
-The same was done for the text data for the sport of cricket and row-binded into one dataframe.  
 
 ## The Distribution of text data
 
-Text data often follows a lognormal (?) distribution, mainly because the english language repeatly uses the same words, such as 'is', 'the', 'a', etc.  Below is the plot of the proportional distributions of words from both the baseball and cricket text.  
-
+Text data often follows a lognormal (?) distribution, because the english language repeatly uses the same words, such as 'is', 'the', 'a', etc.  Below is the plot of the proportional distributions of words from both the baseball and cricket text.  
 
 ```{r dist_plot, echo=FALSE, warning=FALSE}
 wordfreq <-
@@ -97,9 +98,9 @@ sum <- sum(totals$N[1:6])
 # totals[1:6, 'word']
 ```
 
-In the combined dataframe, the words 'the', 'of', 'a', 'and', 'in', 'to' occur around 20% of the time!  These type of words are often referred to as 'stop words' and sometimes removed in the preprocessing step.  
+In the combined dataframe, the words 'the', 'of', 'a', 'and', 'in', 'to' occur around 20% of the time!  These type of words are often referred to as 'stop words' and sometimes removed in the preprocessing step.
 
-Sometimes, it may be appropriate to use frequency counts as a vector representation for text, but often it may not be an accurate depictor of the textual features.  This is the 'bag of words' vector representation of text.  
+Sometimes, it may be appropriate to use frequency counts as a vector representation for text, but often it may not be an accurately describe the features.  This is the 'bag of words' vector representation of text.  
 
 ## Forming the idf with the natural logarithm
 
@@ -108,7 +109,11 @@ Frequency counts don't really tell us much about the sport of baseball and crick
 ```{r natural_logarithm_plot}
 log.df <- cbind.data.frame('x' = seq(0, 1, by = 0.001), y = log(1/seq(0, 1, by = 0.001)))
 
-ggplot(log.df, aes(x = x, y = y)) + geom_line() + xlab('Total number of Documents/Number of Documents Containing That Word') + ylab('log(x)') + ggtitle('IDF')
+ggplot(log.df, 
+       aes(x = x, y = y)) + 
+       geom_line() + 
+  xlab('Total number of Documents/Number of Documents Containing That Word') +   ylab('IDF (log(x))') + 
+  ggtitle('IDF')
 ```
 
 For example, since the word 'the' occurs in both documents, `idf: log(2/2) = 0`. However, since the word 'cricket' occurs in only one of the documents, `idf: log(2/1) = 0.69`.  Hence, the words that are unique to each document will recieve a higher weight than those that occur frequently.  
@@ -160,15 +165,6 @@ sports_tfidf %>%
   summarize(tfidf_sum = sum(tf_idf))
 ```
 
-## Common Recomendation Engine: tf_idf with cosine similarity
-
-
-
-```{r cosine_sim}
- 
-
-```
-
 ## Various methods for text vectorization
 
 There are several commands in both R and Python that will produce a Document Term Matrix with tf-idf weightings.  Something to note is that often these matrices take a term frequency vector instead of a vector of text.  Below is a list and notes on a few of them.  As is typical of R, there is probably a plethora of functions to do the same thing, and conversely in python, one function with a plethora of options.
@@ -177,10 +173,9 @@ R:
 - `DocumentTermMatrix` or `TermDocumentMatrix`.  I didnt try this one as my data was in a dataframe and not structured as a `corpus`.  It does have a control function to choose the tf-idf weightings (`weightTfIdf`) with the option to normalize the term frequencies. 
 - `cast_dtm`.  Better option if you have a tidy dataframe of terms and don't want to work through generating a corpus structure.  Requires a count column (`value`).  The tf-idf weighting is `weighting = tm::weightTfIdf` and can normalize the term frequency. 
 
-## 
-
 Python:
-- `TfIdfTransformer`
+- `TfIdfTransformer`. Contains a couple idf normalization techniques, and a smoother.  This function merely transforms the matrix, which means you will have to form the frequency counts first, `CountVectorizer` can achieve this.  This function is useful if you want to take a more step-by-step approach.
+- 'TfIdfVectorizer'.  Performs `CountVectorizer` and `TfIdfTransformer` at once, also has some preprocessing options.
 
 
 ## Pitfalls of tf-idf
@@ -216,8 +211,8 @@ tryout2019 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentati
 spam <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//spam-email.txt', header = FALSE, fill = FALSE, col.names = 'spam', stringsAsFactors = FALSE, quote="")
 tryout2018 <- read.delim2('C://Users//Owner//Documents//Github//tf_idfpresentationonbaseballandcricket//My Emails//Tryouts-2018.txt', header = FALSE, fill = FALSE, col.names = 'tryout2018', stringsAsFactors = FALSE)
 
-tok1 <- tokenizer.func(tryout2019, sp = 'tok1')
-tok2 <- tokenizer.func(tryout2018, sp = 'tok2')
+tok1 <- tokenizer.func(tryout2019, sp = 'tryouts2019')
+tok2 <- tokenizer.func(tryout2018, sp = 'tryouts2018')
 tok3 <- tokenizer.func(spam, sp = 'spam')
 
 emails <- bind_rows(tok1, tok2, tok3)
@@ -229,5 +224,12 @@ df <-
 
 library(lsa)
 mat <- cosine(t(as.matrix(df))) 
+mat
 ```
 
+
+## Wh
+
+There it is, but if I search tf idf, I can no longer find it. 
+
+## Citations
